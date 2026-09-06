@@ -1,22 +1,20 @@
-FROM oven/bun:1 AS base
-
-# Install dependencies
+# Install deps
+FROM oven/bun:1 AS deps
 WORKDIR /app
-COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile
-
-# Copy source
-COPY . .
-
-# Build
-RUN bun run build
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile || bun install
 
 # Production
 FROM oven/bun:1-slim AS production
 WORKDIR /app
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json .
+
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV HOST=0.0.0.0
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY index.ts ./
+COPY package.json ./
 
 EXPOSE 3001
-CMD ["bun", "run", "dist/index.js"]
+CMD ["bun", "run", "index.ts"]

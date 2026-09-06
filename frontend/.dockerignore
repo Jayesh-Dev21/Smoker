@@ -1,0 +1,5 @@
+.next
+.git
+.gitignore
+README.md
+.env*.local
