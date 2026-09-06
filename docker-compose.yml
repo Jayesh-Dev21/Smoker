@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - smoker
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+      - ETH_RPC_URL=${ETH_RPC_URL:-http://host.docker.internal:8545}
+    networks:
+      - smoker
+
+networks:
+  smoker:
+    driver: bridge
