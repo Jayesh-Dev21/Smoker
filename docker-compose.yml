@@ -6,33 +6,18 @@ services:
     environment:
       - ANVIL_IP_ADDR=0.0.0.0
 
-  contracts:
-    build:
-      context: ./contracts
-      dockerfile: Dockerfile
-    network_mode: host
-    depends_on:
-      anvil:
-        condition: service_started
-    volumes:
-      - shared-data:/shared
-    environment:
-      - ETH_RPC_URL=http://127.0.0.1:8545
-      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
     network_mode: host
-    depends_on:
-      contracts:
-        condition: service_completed_successfully
     volumes:
       - shared-data:/shared
     environment:
       - ETH_RPC_URL=http://127.0.0.1:8545
       - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    depends_on:
+      - anvil
 
   frontend:
     build:
@@ -49,10 +34,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: host
     network_mode: host
-    depends_on:
-      contracts:
-        condition: service_completed_successfully
     volumes:
       - shared-data:/shared
     environment:
@@ -60,6 +43,8 @@ services:
       - HOST=0.0.0.0
       - ETH_RPC_URL=http://127.0.0.1:8545
       - DASHBOARD_URL=http://127.0.0.1:3002
+    depends_on:
+      - anvil
 
 volumes:
   shared-data:
