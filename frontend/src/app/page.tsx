@@ -18,6 +18,11 @@ interface ScanResult {
   provenance: { hasAttestation: boolean; verified: boolean };
   trustScore: number;
   scannedAt: string;
+  ethereumAnchor?: {
+    txHash: string;
+    blockNumber: number;
+    chainId: number;
+  };
 }
 
 const severityColors: Record<string, string> = {
@@ -190,6 +195,26 @@ export default function Home() {
             <p className="text-xs text-zinc-400">
               Scanned at {new Date(result.scannedAt).toLocaleString()}
             </p>
+
+            {result.ethereumAnchor && (
+              <div className="mt-4 p-4 border-t border-zinc-300">
+                <h4 className="text-sm font-medium mb-2">Ethereum Anchor</h4>
+                <div className="text-xs text-zinc-400">
+                  <div>
+                    Tx Hash:{" "}
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${result.ethereumAnchor.txHash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {result.ethereumAnchor.txHash.substring(0, 16)}...
+                    </a>
+                  </div>
+                  <div>Block: {result.ethereumAnchor.blockNumber}</div>
+                  <div>Chain: {result.ethereumAnchor.chainId}</div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
