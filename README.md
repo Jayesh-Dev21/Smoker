@@ -4,6 +4,8 @@
 
 Software supply chain smoke detection tool. Scans dependencies, detects threats (typosquatting, malicious scripts, new packages, no provenance), verifies Sigstore provenance, and anchors trust records to Ethereum via a Solidity contract (`SmokerVerifier`).
 
+<img width="798" height="811" alt="image" src="https://github.com/user-attachments/assets/ff0d1710-e971-48b5-8abd-acfd07e3b52e" />
+
 ## 🟢 Working End-to-End Flow
 
 ```bash
