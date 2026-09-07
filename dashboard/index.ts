@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { html } from "@elysiajs/html";
 import { cors } from "@elysiajs/cors";
 import { ethers } from "ethers";
 import { ABI } from "./abi";
@@ -145,7 +144,13 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 
 const app = new Elysia()
   .use(cors())
-  .get("/", () => html(DASHBOARD_HTML))
+  .get(
+    "/",
+    () =>
+      new Response(DASHBOARD_HTML, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      })
+  )
   .get("/api/health", () => ({
     status: "ok",
     connected: !!CONTRACT_ADDRESS,
