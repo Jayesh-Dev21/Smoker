@@ -1,7 +1,11 @@
 FROM ghcr.io/foundry-rs/foundry:latest
 WORKDIR /app
 
+RUN mkdir -p cache out
+
 COPY . .
+
+RUN chmod -R 777 cache out
 
 RUN forge build
 
