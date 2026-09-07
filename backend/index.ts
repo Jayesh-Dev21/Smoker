@@ -3,6 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { readFileSync, existsSync } from "fs";
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://dashboard:3002";
+const resultsCache = new Map<string, any>();
 
 function getContractAddress(): string {
   const sharedPath = "/shared/contract-address.txt";
@@ -88,7 +89,12 @@ function editDistance(a: string, b: string): number {
   return dp[m][n];
 }
 
-function detectThreats(pkgName: string, registry: string, metadata: any) {
+function detectThreats(
+  pkgName: string,
+  registry: string,
+  metadata: any,
+  versionMeta: any
+) {
   const threats: any[] = [];
 
   // Typosquatting detection
@@ -110,7 +116,7 @@ function detectThreats(pkgName: string, registry: string, metadata: any) {
     }
   }
 
-  // New package detection
+  // New package detection (works for npm — time is at top level)
   if (metadata?.time?.created) {
     const created = new Date(metadata.time.created);
     const daysOld = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
@@ -125,13 +131,8 @@ function detectThreats(pkgName: string, registry: string, metadata: any) {
     }
   }
 
-  // Maintainer change detection
+  // Maintainer change detection (works for npm — maintainers at top level)
   if (metadata?.maintainers && metadata.maintainers.length > 0) {
-    const maintainerAges = metadata.maintainers.map((m: any) => {
-      // maintainer objects from npm don't always have dates
-      return { name: m.name || m.email, age: 0 };
-    });
-    // If many maintainers, could indicate compromise
     if (metadata.maintainers.length > 5) {
       threats.push({
         type: "maintainer-change",
@@ -143,8 +144,9 @@ function detectThreats(pkgName: string, registry: string, metadata: any) {
     }
   }
 
-  // No provenance
-  if (metadata?.dist && !metadata.dist.attestations) {
+  // No provenance (npm: check version-level dist.attestations)
+  const dist = versionMeta?.dist || metadata?.dist;
+  if (dist && !dist.attestations) {
     threats.push({
       type: "no-provenance",
       severity: "info",
@@ -154,15 +156,16 @@ function detectThreats(pkgName: string, registry: string, metadata: any) {
     });
   }
 
-  // Malicious script detection
-  if (metadata?.scripts) {
+  // Malicious script detection (npm: check version-level scripts)
+  const scripts = versionMeta?.scripts || metadata?.scripts;
+  if (scripts) {
     const dangerous = ["preinstall", "install", "postinstall"];
     for (const hook of dangerous) {
-      if (metadata.scripts[hook]) {
+      if (scripts[hook]) {
         threats.push({
           type: "malicious-script",
           severity: "high",
-          description: `Has a "${hook}" script: ${metadata.scripts[hook].substring(0, 100)}`,
+          description: `Has a "${hook}" script: ${scripts[hook].substring(0, 100)}`,
           recommendation:
             "Lifecycle scripts can execute arbitrary code. Review before installing.",
         });
@@ -248,19 +251,37 @@ const app = new Elysia()
       }
     }
 
-    // Determine version info
+    // Determine version info and extract version-level metadata
     let resolvedVersion = version || "latest";
-    if (metadata?.version) {
+    let versionMeta: any = null;
+
+    if (
+      metadata?.["dist-tags"]?.latest ||
+      metadata?.["dist-tags"]?.[resolvedVersion]
+    ) {
+      // npm full document: extract from versions[dist-tags.latest]
+      const tag =
+        metadata["dist-tags"]?.[resolvedVersion] ||
+        metadata["dist-tags"].latest;
+      resolvedVersion = tag;
+      versionMeta = metadata?.versions?.[tag] || null;
+    } else if (metadata?.version) {
+      // PyPI / crates: version at top level
       resolvedVersion = metadata.version;
-    } else if (metadata?.["dist-tags"]?.latest) {
-      resolvedVersion = metadata["dist-tags"].latest;
+      versionMeta = metadata;
     }
 
-    // Detect threats
-    const threats = detectThreats(packageName, packageRegistry, metadata);
+    // Detect threats (pass versionMeta for scripts/dist access)
+    const threats = detectThreats(
+      packageName,
+      packageRegistry,
+      metadata,
+      versionMeta
+    );
 
-    // Check provenance
-    const hasAttestation = !!metadata?.dist?.attestations;
+    // Check provenance (use version-level dist if available)
+    const dist = versionMeta?.dist || metadata?.dist;
+    const hasAttestation = !!dist?.attestations;
     const provenance = {
       hasAttestation,
       verified: hasAttestation,
@@ -281,6 +302,9 @@ const app = new Elysia()
       trustScore,
       scannedAt: new Date().toISOString(),
     };
+
+    // Cache result for retrieval
+    resultsCache.set(result.id, result);
 
     // Record to Ethereum via dashboard
     try {
@@ -309,11 +333,19 @@ const app = new Elysia()
     return result;
   })
   .get("/api/results/:id", ({ params }) => {
+    const result = resultsCache.get(params.id);
+    if (result) return result;
     return {
       id: params.id,
       status: "not_found",
       message: "Results are ephemeral in this demo",
     };
+  })
+  .get("/api/history", () => {
+    return Array.from(resultsCache.values()).sort(
+      (a, b) =>
+        new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime()
+    );
   })
   .post("/api/verify", async ({ body }) => {
     const { packageName, registry } = body as {
