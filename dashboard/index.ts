@@ -1,10 +1,29 @@
-import { Elysia, html } from "elysia";
+import { Elysia } from "elysia";
+import { html } from "@elysiajs/html";
 import { cors } from "@elysiajs/cors";
 import { ethers } from "ethers";
 import { ABI } from "./abi";
+import { readFileSync, existsSync } from "fs";
 
 const RPC_URL = process.env.ETH_RPC_URL || "http://anvil:8545";
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "";
+const PRIVATE_KEY =
+  process.env.PRIVATE_KEY ||
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
+function getContractAddress(): string {
+  // Try shared volume first (from deploy script)
+  const sharedPath = "/shared/contract-address.txt";
+  if (existsSync(sharedPath)) {
+    try {
+      const addr = readFileSync(sharedPath, "utf-8").trim();
+      if (addr) return addr;
+    } catch {}
+  }
+  // Fallback to env var
+  return process.env.CONTRACT_ADDRESS || "";
+}
+
+const CONTRACT_ADDRESS = getContractAddress();
 
 let provider: ethers.JsonRpcProvider;
 let contract: ethers.Contract;
@@ -12,7 +31,13 @@ let contract: ethers.Contract;
 function connectContract() {
   provider = new ethers.JsonRpcProvider(RPC_URL);
   if (CONTRACT_ADDRESS) {
-    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, wallet);
+    console.log(`Connected to contract at ${CONTRACT_ADDRESS}`);
+  } else {
+    console.warn(
+      "No contract address found. Dashboard will run without contract."
+    );
   }
 }
 
@@ -198,6 +223,71 @@ const app = new Elysia()
         createdAt: Number(a[5]),
       })),
     };
+  })
+  .post("/api/scan", async ({ body }) => {
+    if (!contract) return { error: "Contract not connected" };
+    const {
+      packageName,
+      registry,
+      trustScore,
+      threatCount,
+      hasProvenance,
+      attestationHash,
+    } = body as {
+      packageName: string;
+      registry: string;
+      trustScore: number;
+      threatCount: number;
+      hasProvenance: boolean;
+      attestationHash: string;
+    };
+    try {
+      const tx = await contract.recordScan(
+        packageName,
+        registry,
+        trustScore,
+        threatCount,
+        hasProvenance,
+        attestationHash
+      );
+      const receipt = await tx.wait();
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        chainId: (await provider.getNetwork()).chainId,
+      };
+    } catch (e: any) {
+      console.error("Failed to record scan:", e);
+      return { error: e.message };
+    }
+  })
+  .post("/api/attestation", async ({ body }) => {
+    if (!contract) return { error: "Contract not connected" };
+    const { packageName, registry, attestationHash, source, commit } = body as {
+      packageName: string;
+      registry: string;
+      attestationHash: string;
+      source: string;
+      commit: string;
+    };
+    try {
+      const tx = await contract.recordAttestation(
+        packageName,
+        registry,
+        attestationHash,
+        source,
+        commit
+      );
+      const receipt = await tx.wait();
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        chainId: (await provider.getNetwork()).chainId,
+      };
+    } catch (e: any) {
+      console.error("Failed to record attestation:", e);
+      return { error: e.message };
+    }
   })
   .listen(3002);
 
