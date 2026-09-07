@@ -3,3 +3,4 @@ dist
 .gitignore
 README.md
 .env*.local
+node_modules
