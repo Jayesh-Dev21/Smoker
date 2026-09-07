@@ -1,46 +1,38 @@
 services:
   anvil:
     image: ghcr.io/foundry-rs/foundry:latest
-    ports:
-      - "8545:8545"
+    network_mode: host
     command: anvil -a 0.0.0.0 -p 8545
     environment:
       - ANVIL_IP_ADDR=0.0.0.0
-    networks:
-      - smoker
 
   contracts:
     build:
       context: ./contracts
       dockerfile: Dockerfile
+    network_mode: host
     depends_on:
       anvil:
         condition: service_started
     volumes:
       - shared-data:/shared
     environment:
-      - ETH_RPC_URL=http://anvil:8545
+      - ETH_RPC_URL=http://127.0.0.1:8545
       - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-    networks:
-      - smoker
 
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
-      network: host
-    ports:
-      - "3002:3002"
-    volumes:
-      - shared-data:/shared
-    environment:
-      - ETH_RPC_URL=http://anvil:8545
-      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    network_mode: host
     depends_on:
       contracts:
         condition: service_completed_successfully
-    networks:
-      - smoker
+    volumes:
+      - shared-data:/shared
+    environment:
+      - ETH_RPC_URL=http://127.0.0.1:8545
+      - PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
   frontend:
     build:
@@ -49,36 +41,25 @@ services:
       network: host
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3001
-    ports:
-      - "3000:3000"
+    network_mode: host
     depends_on:
       - backend
-    networks:
-      - smoker
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      network: host
-    ports:
-      - "3001:3001"
+    network_mode: host
+    depends_on:
+      contracts:
+        condition: service_completed_successfully
     volumes:
       - shared-data:/shared
     environment:
       - PORT=3001
       - HOST=0.0.0.0
-      - ETH_RPC_URL=http://anvil:8545
-      - DASHBOARD_URL=http://dashboard:3002
-    depends_on:
-      contracts:
-        condition: service_completed_successfully
-    networks:
-      - smoker
+      - ETH_RPC_URL=http://127.0.0.1:8545
+      - DASHBOARD_URL=http://127.0.0.1:3002
 
 volumes:
   shared-data:
-
-networks:
-  smoker:
-    driver: bridge

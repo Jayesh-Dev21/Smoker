@@ -8,6 +8,4 @@ COPY . .
 
 RUN chmod +x scripts/deploy.sh
 
-EXPOSE 8545
-
 CMD ["bash", "scripts/deploy.sh"]
