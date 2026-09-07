@@ -1,0 +1,17 @@
+{
+  "name": "dashboard",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
+    "elysia": "^1.4.30",
+    "ethers": "^6.17.0"
+  }
+}

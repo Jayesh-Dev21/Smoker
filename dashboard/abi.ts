@@ -1,0 +1,18 @@
+export const ABI = [
+  "function recordScan(string,string,uint8,uint256,bool,string) external returns (uint256)",
+  "function recordAttestation(string,string,string,string,string) external returns (uint256)",
+  "function verifyPackage(string,string,bool) external",
+  "function getScans(string,string) external view returns (tuple(string,string,uint8,uint256,bool,string,uint256,address)[])",
+  "function getAttestations(string,string) external view returns (tuple(string,string,string,string,string,uint256,address)[])",
+  "function isVerified(string,string) external view returns (bool)",
+  "function getScanCount(string,string) external view returns (uint256)",
+  "function getAttestationCount(string,string) external view returns (uint256)",
+  "function totalScans() external view returns (uint256)",
+  "function totalAttestations() external view returns (uint256)",
+  "function totalVerified() external view returns (uint256)",
+  "function getAllScans() external view returns (tuple(string,string,uint8,uint256,bool,string,uint256,address)[])",
+  "function getAllAttestations() external view returns (tuple(string,string,string,string,string,uint256,address)[])",
+  "event ScanRecorded(string,string,uint8,uint256)",
+  "event AttestationRecorded(string,string,string,uint256)",
+  "event PackageVerified(string,string,bool,uint256)",
+];
