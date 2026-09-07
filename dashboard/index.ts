@@ -160,16 +160,21 @@ const app = new Elysia()
   }))
   .get("/api/stats", async () => {
     if (!contract) return { error: "Contract not connected" };
-    const [totalScans, totalAttestations, totalVerified] = await Promise.all([
-      contract.totalScans(),
-      contract.totalAttestations(),
-      contract.totalVerified(),
-    ]);
-    return {
-      totalScans: Number(totalScans),
-      totalAttestations: Number(totalAttestations),
-      totalVerified: Number(totalVerified),
-    };
+    try {
+      const [totalScans, totalAttestations, totalVerified] = await Promise.all([
+        contract.totalScans(),
+        contract.totalAttestations(),
+        contract.totalVerified(),
+      ]);
+      return {
+        totalScans: Number(totalScans),
+        totalAttestations: Number(totalAttestations),
+        totalVerified: Number(totalVerified),
+      };
+    } catch (e: any) {
+      console.error("Stats error:", e.message);
+      return { error: e.message };
+    }
   })
   .get("/api/scans", async () => {
     if (!contract) return { error: "Contract not connected" };
@@ -256,10 +261,11 @@ const app = new Elysia()
         attestationHash
       );
       const receipt = await tx.wait();
+      const net = await provider.getNetwork();
       return {
         txHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        chainId: (await provider.getNetwork()).chainId,
+        blockNumber: Number(receipt.blockNumber),
+        chainId: Number(net.chainId),
       };
     } catch (e: any) {
       console.error("Failed to record scan:", e);
@@ -284,10 +290,11 @@ const app = new Elysia()
         commit
       );
       const receipt = await tx.wait();
+      const net = await provider.getNetwork();
       return {
         txHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        chainId: (await provider.getNetwork()).chainId,
+        blockNumber: Number(receipt.blockNumber),
+        chainId: Number(net.chainId),
       };
     } catch (e: any) {
       console.error("Failed to record attestation:", e);
