@@ -28,6 +28,7 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      network: host
     ports:
       - "3002:3002"
     volumes:
@@ -58,6 +59,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: host
     ports:
       - "3001:3001"
     volumes:
